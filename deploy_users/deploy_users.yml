@@ -1,5 +1,5 @@
 ---
-- name: Create users and generate SSH key pairs
+- name: Create users and add SSH keys
   hosts: all
   become: yes
   become_method: sudo
@@ -24,38 +24,12 @@
         mode: '0700'
       loop: "{{ users }}"
 
-    - name: Generate SSH key pairs for each user
-      openssh_keypair:
-        path: "/home/{{ item.username }}/.ssh/id_rsa_{{ item.username }}"
-        owner: "{{ item.username }}"
-        group: "{{ item.username }}"
-        mode: '0600'
-        type: rsa
-      loop: "{{ users }}"
-
-    - name: Ensure users'.ssh directory has correct permissions
-      file:
-        path: "/home/{{ item.username }}/.ssh"
-        state: directory
-        owner: "{{ item.username }}"
-        group: "{{ item.username }}"
-        mode: '0700'
-      loop: "{{ users }}"
-
-    - name: Read the public keys
-      slurp:
-        src: "/home/{{ item.username }}/.ssh/id_rsa_{{ item.username }}.pub"
-      register: public_key
-      loop: "{{ users }}"
-
-    - name: Store public keys in a plaintext file
-      lineinfile:
-        path: /tmp/public_keys.txt
-        create: yes
-        line: "{{ item.item.username }}: {{ item.content | b64decode }}"
+    - name: Add provided public keys to authorized_keys
+      authorized_key:
+        user: "{{ item.username }}"
         state: present
-      loop: "{{ public_key.results }}"
-      when: item is defined and item is not failed
+        key: "{{ item.public_key }}"
+      loop: "{{ users }}"
 
     - name: Ensure users' home directory has correct permissions
       file:
@@ -64,4 +38,11 @@
         owner: "{{ item.username }}"
         group: "{{ item.username }}"
         mode: '0755'
+      loop: "{{ users }}"
+
+    - name: Add users to appropriate groups
+      user:
+        name: "{{ item.username }}"
+        groups: "{{ item.groups }}"
+        append: yes
       loop: "{{ users }}"
