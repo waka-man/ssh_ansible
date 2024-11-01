@@ -46,3 +46,17 @@
         groups: "{{ item.groups }}"
         append: yes
       loop: "{{ users }}"
+
+    - name: Disable password authentication for users
+      lineinfile:
+        path: "/etc/ssh/sshd_config"
+        regexp: "^PasswordAuthentication"
+        line: "PasswordAuthentication no"
+        state: present
+      notify: Restart SSH
+
+  handlers:
+    - name: Restart SSH
+      service:
+        name: sshd
+        state: restarted
