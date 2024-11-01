@@ -1,0 +1,67 @@
+---
+- name: Create users and generate SSH key pairs
+  hosts: all
+  become: yes
+  become_method: sudo
+  vars_files:
+    - users.yml
+
+  tasks:
+    - name: Check if users exist, create if they don't
+      user:
+        name: "{{ item.username }}"
+        password: "{{ item.password }}"
+        state: present
+        shell: /bin/bash
+      loop: "{{ users }}"
+
+    - name: Ensure users' .ssh directory exists
+      file:
+        path: "/home/{{ item.username }}/.ssh"
+        state: directory
+        owner: "{{ item.username }}"
+        group: "{{ item.username }}"
+        mode: '0700'
+      loop: "{{ users }}"
+
+    - name: Generate SSH key pairs for each user
+      openssh_keypair:
+        path: "/home/{{ item.username }}/.ssh/id_rsa_{{ item.username }}"
+        owner: "{{ item.username }}"
+        group: "{{ item.username }}"
+        mode: '0600'
+        type: rsa
+      loop: "{{ users }}"
+
+    - name: Ensure users'.ssh directory has correct permissions
+      file:
+        path: "/home/{{ item.username }}/.ssh"
+        state: directory
+        owner: "{{ item.username }}"
+        group: "{{ item.username }}"
+        mode: '0700'
+      loop: "{{ users }}"
+
+    - name: Read the public keys
+      slurp:
+        src: "/home/{{ item.username }}/.ssh/id_rsa_{{ item.username }}.pub"
+      register: public_key
+      loop: "{{ users }}"
+
+    - name: Store public keys in a plaintext file
+      lineinfile:
+        path: /tmp/public_keys.txt
+        create: yes
+        line: "{{ item.item.username }}: {{ item.content | b64decode }}"
+        state: present
+      loop: "{{ public_key.results }}"
+      when: item is defined and item is not failed
+
+    - name: Ensure users' home directory has correct permissions
+      file:
+        path: "/home/{{ item.username }}"
+        state: directory
+        owner: "{{ item.username }}"
+        group: "{{ item.username }}"
+        mode: '0755'
+      loop: "{{ users }}"

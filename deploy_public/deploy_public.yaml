@@ -1,0 +1,24 @@
+---
+- name: Distribute multiple SSH keys to servers
+  hosts: servers
+  become: yes
+  become_method: sudo
+  vars_files:
+    - keys.yml
+
+  tasks:
+    - name: Ensure the .ssh directory exists
+      file:
+        path: /home/{{ item.user }}/.ssh
+        state: directory
+        owner: "{{ item.user }}"
+        group: "{{ item.user }}"
+        mode: '0700'
+      with_items: "{{ user_pub_keys[inventory_hostname] }}"
+
+    - name: Add the public key to authorized_keys
+      authorized_key:
+        user: "{{ item.user }}"
+        state: present
+        key: "{{ item.key }}"
+      with_items: "{{ user_pub_keys[inventory_hostname] }}"
