@@ -25,7 +25,7 @@
       loop: "{{ users }}"
 
     - name: Add provided public keys to authorized_keys
-      authorized_key:
+      ansible.posix.authorized_key:
         user: "{{ item.username }}"
         state: present
         key: "{{ item.public_key }}"
