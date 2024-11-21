@@ -19,9 +19,9 @@ Before using this playbook, ensure you have the following:
 
 ## Usage
 
-1. Clone this repository to your local machine:
+1. Clone this repository to your control machine:
    ```sh
-   git clone https://github.com/yourusername/deploy_users.git
+   git clone https://github.com/Irembo/irembogov_3_sysops/ansible_palybooks/deploy_users.git
    cd deploy_users
    ```
 
@@ -40,7 +40,7 @@ Before using this playbook, ensure you have the following:
 
 3. Run the playbook:
    ```sh
-   ansible-playbook -i your_inventory_file deploy_users.yml
+   ansible-playbook -i hosts deploy_users.yml --ask-vault-pass --ask-become-pass
    ```
 
 ## Playbook Details
@@ -54,7 +54,7 @@ The playbook `deploy_users.yml` performs the following tasks:
    - Uses the `file` module to create the `.ssh` directory in each user's home directory with appropriate permissions.
 
 3. **Add provided public keys to authorized_keys**:
-   - Uses the `ansible.posix.authorized_key` module to add the provided public keys to the `authorized_keys` file for each user.
+   - Uses the `ansible.posix.authorized_key` module to add the provided public keys to the `authorized_keys` file for each user. This module was previously just the `authorized_key` module and now moved under the collection `ansible.posix`. This should be installed on the control machine with `ansible-galaxy collection install ansible.posix`
 
 4. **Ensure users' home directory has correct permissions**:
    - Uses the `file` module to set the correct permissions for each user's home directory.
