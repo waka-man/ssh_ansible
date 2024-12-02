@@ -1,0 +1,73 @@
+---
+  - name: Scan servers with openscap
+    hosts: all
+    become: yes
+    become_method: sudo
+  
+    tasks:
+      - name: Update apt cache
+        apt:
+          update_cache: yes
+  
+      - name: Install OpenSCAP packages
+        apt:
+          name: "{{ item }}"
+          update_cache: yes
+        loop:
+          - libopenscap8
+          - unzip
+          - wget
+  
+      - name: Create directory for SCAP Security Guide
+        file:
+          path: "/tmp/scap-security-guide"
+          state: directory
+          mode: '0755'
+  
+      - name: Download precompiled SCAP Security Guide
+        get_url:
+          url: "https://github.com/ComplianceAsCode/content/releases/download/v0.1.69/scap-security-guide-0.1.69.zip"
+          dest: "/tmp/scap-security-guide-0.1.69.zip"
+  
+      - name: Extract SCAP Security Guide
+        unarchive:
+          src: "/tmp/scap-security-guide-0.1.69.zip"
+          dest: "/tmp/scap-security-guide"
+          remote_src: yes
+  
+      - name: Create system SCAP content directory
+        file:
+          path: "/usr/share/xml/scap/ssg/content/"
+          state: directory
+          owner: root
+          group: root
+          mode: '0755'
+  
+      - name: Copy SCAP content to system directory
+        copy:
+          src: "/tmp/scap-security-guide/scap-security-guide-0.1.69/ssg-ubuntu2204-ds-1.2.xml"
+          dest: "/usr/share/xml/scap/ssg/content/ssg-ubuntu2204-ds-1.2.xml"
+          remote_src: yes
+          owner: root
+          group: root
+          mode: '0644'
+  
+      - name: Clear OpenSCAP cache
+        shell: rm -rf /var/tmp/openscap
+        ignore_errors: yes
+  
+      - name: Run OpenSCAP scan
+        shell: oscap xccdf eval --profile standard --results /opt/scan_results.xml /usr/share/xml/scap/ssg/content/ssg-ubuntu2204-ds-1.2.xml
+        register: oscap_scan_result
+        changed_when: oscap_scan_result.rc == 2
+        failed_when: oscap_scan_result.rc not in [0, 2]
+  
+      - name: Display scan results
+        debug:
+          msg: "OpenSCAP scan results:\n{{ oscap_scan_result.stdout }}"
+  
+      - name: Handle OpenSCAP scan warnings
+        debug:
+          msg: "OpenSCAP scan completed with warnings:\n{{ oscap_scan_result.stderr }}"
+        when: oscap_scan_result.rc == 2
+  
