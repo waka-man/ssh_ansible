@@ -57,17 +57,26 @@
         ignore_errors: yes
   
       - name: Run OpenSCAP scan
-        shell: oscap xccdf eval --profile standard --results /opt/scan_results.xml /usr/share/xml/scap/ssg/content/ssg-ubuntu2204-ds-1.2.xml
+        shell: oscap xccdf eval --profile standard --results /opt/scan_results.xml --report /opt/scan_results.html /usr/share/xml/scap/ssg/content/ssg-ubuntu2204-ds-1.2.xml
         register: oscap_scan_result
         changed_when: oscap_scan_result.rc == 2
         failed_when: oscap_scan_result.rc not in [0, 2]
   
-      - name: Display scan results
+      - name: Display summary of scan results (stdout)
         debug:
-          msg: "OpenSCAP scan results:\n{{ oscap_scan_result.stdout }}"
-  
+          msg: "OpenSCAP scan completed:\n{{ oscap_scan_result.stdout }}"
+
       - name: Handle OpenSCAP scan warnings
         debug:
           msg: "OpenSCAP scan completed with warnings:\n{{ oscap_scan_result.stderr }}"
         when: oscap_scan_result.rc == 2
+  
+      - name: Generate human-readable scan results
+        shell: oscap xccdf generate report /opt/scan_results.xml > /opt/scan_results_readable.html
+        register: human_readable_result
+        ignore_errors: yes
+  
+      - name: Display location of human-readable report
+        debug:
+          msg: "The human-readable scan report is available at /opt/scan_results.html or /opt/scan_results_readable.html"
   
